@@ -21,10 +21,9 @@ import java.util.List;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRegistration.Dynamic;
 
-import org.springframework.web.context.support.WebApplicationContextUtils;
 import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
-import org.springframework.web.util.WebUtils;
 
 import me.fb.tiny.config.TinyConfig;
 import me.fb.tiny.config.TinyWebConfig;
@@ -70,7 +69,7 @@ public abstract class AbstractWebApplicationInitializer extends AbstractAnnotati
 
 		configs.add(TinyWebConfig.class);
 		
-		Class<?>[] configClasses = this.getRootApplicationContextConfigClasses();
+		Class<?>[] configClasses = this.getWebApplicationContextConfigClasses();
 		for (Class<?> clazz : configClasses) {
 			if (clazz != null) {
 				configs.add(clazz);
@@ -83,6 +82,8 @@ public abstract class AbstractWebApplicationInitializer extends AbstractAnnotati
 	protected String[] getServletMappings() {
 		return new String[] { "/" };
 	}
+	
+	
 
 	/**
 	 * 添加rootApplicationConfig,以注解形式的class配置文件
@@ -97,5 +98,11 @@ public abstract class AbstractWebApplicationInitializer extends AbstractAnnotati
 	 * @return
 	 */
 	protected abstract Class<?>[] getWebApplicationContextConfigClasses();
+
+	@Override
+	protected void customizeRegistration(Dynamic registration) {
+		super.customizeRegistration(registration);
+		registration.setInitParameter("throwExceptionIfNoHandlerFound", "true");
+	}
 
 }

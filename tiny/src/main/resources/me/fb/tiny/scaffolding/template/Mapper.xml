@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="${domainClass.fullName}">
+	<resultMap id="BaseResultMap" type="${domainClass.fullName}">
+	<#if domainClass.identifier??>
+		<id column="${domainClass.identifier.columnName}" property="${domainClass.identifier.fieldName}" />
+	</#if>
+	<#list domainClass.persistentProperties>
+		<#items as property>
+			<#if !property.isIdentifier()>
+				<#if property.isDomainType()>
+		<result column="${property.columnName}" property="${property.domainFieldName}"/>		
+					<#else>
+		<result column="${property.columnName}" property="${property.fieldName}"/>
+				</#if>
+			</#if>
+		</#items>
+	</#list>
+	</resultMap>
+	<#if joinResultMap??>
+	<resultMap id="JoinResultMap" type="${domainClass.fullName}">
+		<id column="domain_${domainClass.identifier.columnName}" property="${domainClass.identifier.fieldName}" />
+		<#list joinResultMap>
+		<#items as property>
+		<result column="${property.columnName}" property="${property.fieldName}"/>				
+		</#items>
+	   </#list>
+	</resultMap>
+	</#if>
+	
+	<sql id="Base_Column">
+		<#list domainClass.persistentProperties as property>${property.columnName}<#if property_has_next>,</#if></#list>
+	</sql>
+	
+	<#if joinColumn??>
+	<sql id="Join_Column">
+		${joinColumn}
+	</sql>
+	</#if>
+	
+	<sql id="Where_Clause">
+		<where>
+			<foreach collection="condition.value" item="item" separator="and">
+				<choose>
+					<when test="item.operator.toString() == 'LIKE'">
+						 ${r'${'}item.property} ${r'${'}item.operator.value} '%'+ ${r'#{'}item.value} + '%'
+					</when>
+					<when test="item.operator.toString() == 'LLIKE'">
+						${r'${'}item.property} ${r'${'}item.operator.value} '%'+ ${r'#{'}item.value}
+					</when>
+					<when test="item.operator.toString() == 'RLIKE'">
+						${r'${'}item.property} ${r'${'}item.operator.value} ${r'#{'}item.value}+'%'
+					</when>
+					<when test="item.operator.toString() == 'ISNULL'">
+						${r'${'}item.property} is null
+					</when>
+					<when test="item.operator.toString() == 'IN'">
+						${r'${'}item.property} in
+						<foreach collection="item.value" item="listItem" open="("
+							close=")" separator=",">
+							${r'#{'}listItem}
+						</foreach>
+					</when>
+					<when test="item.operator.toString() == 'AND'">
+						<foreach collection="item.value" item="andChildrenItem"
+							separator="and">
+							<choose>
+								<when test="andChildrenItem.operator.toString() == 'LIKE'">
+									${r'${'}andChildrenItem.property} ${r'${'}andChildrenItem.operator.value} '%'+${r'#{'}andChildrenItem.value}+'%'
+								</when>
+								<when test="andChildrenItem.operator.toString() == 'LLIKE'">
+									${r'${'}andChildrenItem.property} ${r'${'}andChildrenItem.operator.value} '%'+${r'#{'}andChildrenItem.value}
+								</when>
+								<when test="andChildrenItem.operator.toString() == 'RLIKE'">
+									${r'${'}andChildrenItem.property} ${r'${'}andChildrenItem.operator.value} ${r'#{'}andChildrenItem.value}+'%'
+								</when>
+								<when test="andChildrenItem.operator.toString() == 'ISNULL'">
+									${r'${'}andChildrenItem.property} is null
+								</when>
+								<when test="andChildrenItem.operator.toString() == 'IN'">
+									${r'${'}andChildrenItem.property} in
+									<foreach collection="andChildrenItem.value" item="andChildrenListItem" open="("
+										close=")" separator=",">
+										${r'#{'}andChildrenListItem}
+									</foreach>
+								</when>
+								<otherwise>
+									${r'${'}andChildrenItem.property} ${r'${'}andChildrenItem.operator.value} ${r'#{'}andChildrenItem.value}
+								</otherwise>
+							</choose>
+						</foreach>
+					</when>
+					<when test="item.operator.toString() == 'OR'">
+						<foreach collection="item.value" item="orChildrenItem"
+							separator="or">
+							<choose>
+								<when test="orChildrenItem.operator.toString() == 'LIKE'">
+									${r'${'}orChildrenItem.property} ${r'${'}orChildrenItem.operator.value} '%'+ ${r'#{'}orChildrenItem.value}+'%'
+								</when>
+								<when test="orChildrenItem.operator.toString() == 'LLIKE'">
+									${r'${'}orChildrenItem.property} ${r'${'}orChildrenItem.operator.value} '%'+${r'#{'}orChildrenItem.value}
+								</when>
+								<when test="orChildrenItem.operator.toString() == 'RLIKE'">
+									${r'${'}orChildrenItem.property} ${r'${'}orChildrenItem.operator.value} ${r'#{'}orChildrenItem.value}+'%'
+								</when>
+								<when test="orChildrenItem.operator.toString() == 'ISNULL'">
+									${r'${'}orChildrenItem.property} is null
+								</when>
+								<when test="orChildrenItem.operator.toString() == 'IN'">
+									${r'${'}orChildrenItem.property} in
+									<foreach collection="orChildrenItem.value" item="orChildrenListItem" open="("
+										close=")" separator=",">
+										${r'#{'}orChildrenListItem}
+									</foreach>
+								</when>
+								<otherwise>
+									${r'${'}orChildrenItem.property} ${r'${'}orChildrenItem.operator.value} ${r'#{'}orChildrenItem.value}
+								</otherwise>
+							</choose>
+						</foreach>
+					</when>
+					<otherwise>
+						${r'${'}item.property} ${r'${'}item.operator.value} ${r'#{'}item.value}
+					</otherwise>
+				</choose>
+			</foreach>
+
+		</where>
+		<if test="sort != null">
+			 order by 
+			<foreach collection="sort.orders" item="item" separator=",">
+				${r'${'}item.property} ${r'${'}item.direction}
+			</foreach>
+		</if>
+	</sql>
+	
+	<delete id="delete" parameterType="${domainClass.identifier.type.name}">
+		delete from ${domainClass.tableName}
+		where ${domainClass.identifier.columnName}
+		= ${r'#{'}${domainClass.identifier.fieldName}}
+	</delete>
+	
+	<delete id="deleteByCondition" parameterType="map">
+		delete from ${domainClass.tableName} 
+		<where>
+			<foreach collection="condition" index="key" item="item" separator="and">
+				${r'${'}key}=${r'#{'}item}
+			</foreach>
+		</where>
+	</delete>
+	
+	<delete id="deleteAll" >
+		delete from ${domainClass.tableName}
+	</delete>
+	
+	<insert id="insert" keyProperty="${domainClass.identifier.fieldName}" useGeneratedKeys="true"
+		parameterType="${domainClass.fullName}">
+		insert into ${domainClass.tableName} (<#list domainClass.persistentProperties as property><#if !property.isIdentifier()>${property.columnName}<#if property_has_next>,</#if></#if></#list>)
+		values (<#list domainClass.persistentProperties as property>
+			<#if !property.isIdentifier()><#if property.isDomainType()>${r'#{'}${property.domainFieldName}}<#else>${r'#{'}${property.fieldName}}</#if><#if property_has_next>,</#if></#if>
+			</#list>)
+	</insert>
+	
+	<update id="update" parameterType="map">
+		update ${domainClass.tableName}
+		<set>
+			<#list domainClass.persistentProperties as property>
+				<#if !property.isIdentifier()>
+			<if test="domain.${property.fieldName} != null">
+			<#if property.isDomainType()>
+			${property.columnName} = ${r'#{'}domain.${property.domainFieldName}},
+			<#else>
+			${property.columnName} = ${r'#{'}domain.${property.fieldName}},
+			</#if>
+			</if>		
+				</#if>
+			</#list>
+		</set>
+		where ${domainClass.identifier.columnName} =  ${r'#{'}domain.${domainClass.identifier.fieldName}}
+		<#if domainClass.version??>
+		<if test="version != null">
+			and ${domainClass.version.fieldName} = ${r'#{'}version}
+		</if>
+		</#if>
+	</update>
+	
+	<update id="updateByCondition" parameterType="map">
+		update ${domainClass.tableName}
+		<set>
+			<#list domainClass.persistentProperties as property>
+				<#if !property.isIdentifier()>
+			<if test="domain.${property.fieldName} != null">
+			<#if property.isDomainType()>
+			${property.columnName} = ${r'#{'}domain.${property.domainFieldName}},
+			<#else>
+			${property.columnName} = ${r'#{'}domain.${property.fieldName}},
+			</#if>
+			</if>		
+				</#if>
+			</#list>
+		</set>
+		<where>
+			<foreach collection="condition" index="key" item="item" separator="and">
+				 ${r'${'}key}= ${r'#{'}item}
+			</foreach>
+			<#if domainClass.version??>
+			<if test="version != null">
+				and ${domainClass.version.fieldName} =  ${r'#{'}version}
+			</if>
+			</#if>
+		</where>
+		
+	</update>
+	
+	<update id="incr" parameterType="map">
+		update ${domainClass.tableName}
+		set  ${r'${'}propertyName}= ${r'${'}propertyName} + ${r'#{'}value}
+		where ${domainClass.identifier.columnName}  = ${r'#{'}${domainClass.identifier.fieldName} }
+	</update>
+	
+	<select id="search" resultMap="BaseResultMap" parameterType="me.fb.tiny.dal.search.Search">
+		select 
+		<include refid="Base_Column"></include> 
+		 from ${domainClass.tableName} as domain
+		<include refid="Where_Clause" />
+	</select>
+	<#if searchJoin??>
+	<select id="searchJoin" resultMap="JoinResultMap" parameterType="me.fb.tiny.dal.search.Search">
+		select 
+		<include refid="Join_Column"></include> 
+		 from ${domainClass.tableName} as domain ${searchJoin}
+		<include refid="Where_Clause" />
+	</select>
+	</#if>
+	<select id="searchCount" resultType="java.lang.Long" parameterType="me.fb.tiny.dal.search.Search">
+		select count(${domainClass.identifier.columnName} )
+		from ${domainClass.tableName}
+		<include refid="Where_Clause" />
+	</select>
+	<select id="selectByPrimaryKey" resultMap="BaseResultMap"
+		parameterType="${domainClass.identifier.type.name}">
+		select 
+		<include refid="Base_Column" />
+		from ${domainClass.tableName}
+		where ${domainClass.identifier.columnName}  = ${r'#{'}id,jdbcType=BIGINT}
+	</select>
+	<select id="selectByIds" resultMap="BaseResultMap" parameterType="java.lang.Iterable">
+		select 
+		<include refid="Base_Column" />
+		from ${domainClass.tableName}
+		where ${domainClass.identifier.columnName}  in 
+		<foreach collection="list" item="id" 
+		open="(" close=")" separator=",">
+			${r'#{'}id}
+		</foreach>
+	</select>
+</mapper>
